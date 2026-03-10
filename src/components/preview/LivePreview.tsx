@@ -71,13 +71,40 @@ function tokensToStyle(tokens: StyleTokens): React.CSSProperties {
   return s as React.CSSProperties;
 }
 
-/** Whitelist of allowed imports for code variants */
-const ALLOWED_IMPORTS: Record<string, unknown> = {
+/** Allowed import prefixes for live evaluation */
+const ALLOWED_PREFIXES = ['react', '@mui/', '@syncfusion/', '@emotion/', 'maui'];
+
+/** Exact-match registry of modules we can actually provide at runtime */
+const RUNTIME_MODULES: Record<string, unknown> = {
   react: React,
   React: React,
   '@mui/material': MuiMaterial,
   '@mui/icons-material': MuiIcons,
 };
+
+/** Resolve a module path to a runtime object.
+ *  - Exact matches (e.g. '@mui/material') → return the module
+ *  - Subpath matches (e.g. '@mui/material/Button') → return parent module
+ *  - Allowed but not available at runtime (syncfusion, maui) → return empty stub
+ */
+function resolveImport(modulePath: string): { mod: unknown; strip: boolean } | null {
+  // Exact match first
+  if (RUNTIME_MODULES[modulePath]) {
+    return { mod: RUNTIME_MODULES[modulePath], strip: false };
+  }
+  // Subpath: try parent package  (e.g. '@mui/material/Button' → '@mui/material')
+  const parts = modulePath.split('/');
+  const parentKey = modulePath.startsWith('@') ? parts.slice(0, 2).join('/') : parts[0];
+  if (RUNTIME_MODULES[parentKey]) {
+    return { mod: RUNTIME_MODULES[parentKey], strip: false };
+  }
+  // Check if it matches an allowed prefix — return empty stub so import is stripped
+  const isAllowed = modulePath === 'react' || ALLOWED_PREFIXES.some((p) => modulePath.startsWith(p));
+  if (isAllowed) {
+    return { mod: {}, strip: true };
+  }
+  return null; // not allowed
+}
 
 /** Transpile JSX source and evaluate into a React element */
 function evaluateCode(source: string): React.ReactNode {
@@ -94,10 +121,11 @@ function evaluateCode(source: string): React.ReactNode {
   let match;
   while ((match = importRegex.exec(source)) !== null) {
     const [fullMatch, namedImports, namespaceImport, defaultImport, modulePath] = match;
-    const mod = ALLOWED_IMPORTS[modulePath];
-    if (!mod) {
-      throw new Error(`Import from "${modulePath}" is not allowed. Allowed: ${Object.keys(ALLOWED_IMPORTS).join(', ')}`);
+    const resolved = resolveImport(modulePath);
+    if (!resolved) {
+      throw new Error(`Import from "${modulePath}" is not allowed. Allowed: react, @mui/*, @syncfusion/*, @emotion/*, maui*`);
     }
+    const mod = resolved.mod;
 
     if (namedImports) {
       namedImports.split(',').forEach((spec) => {

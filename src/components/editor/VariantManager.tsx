@@ -99,15 +99,23 @@ async function validateJsx(source: string): Promise<string | null> {
   }
 }
 
-// Allowed import check
-const ALLOWED_MODULES = new Set(['react', '@mui/material', '@mui/icons-material']);
+// Allowed import prefixes
+const ALLOWED_PREFIXES = [
+  'react',
+  '@mui/',
+  '@syncfusion/',
+  '@emotion/',
+  'maui',
+];
 
 function checkImports(source: string): string | null {
   const importRegex = /import\s+.*?\s+from\s+['"]([^'"]+)['"]/g;
   let match;
   while ((match = importRegex.exec(source)) !== null) {
-    if (!ALLOWED_MODULES.has(match[1])) {
-      return `Import from "${match[1]}" is not allowed. Allowed modules: ${[...ALLOWED_MODULES].join(', ')}`;
+    const mod = match[1];
+    const allowed = mod === 'react' || ALLOWED_PREFIXES.some((p) => mod.startsWith(p));
+    if (!allowed) {
+      return `Import from "${mod}" is not allowed. Allowed: react, @mui/*, @syncfusion/*, @emotion/*, maui*`;
     }
   }
   return null;
