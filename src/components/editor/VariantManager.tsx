@@ -306,30 +306,25 @@ export default function VariantManager({
           </Typography>
         </Paper>
       ) : (
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
           {variants.map((v) => (
-            <Chip
-              key={v.id}
-              label={v.name}
-              icon={v.type === 'svg' ? <SvgIcon /> : <CodeIcon />}
-              variant={selectedVariantId === v.id ? 'filled' : 'outlined'}
-              color={selectedVariantId === v.id ? 'primary' : 'default'}
-              onClick={() => onSelectVariant(v.id)}
-              onDelete={
-                isEdit
-                  ? () => handleDelete(v.id)
-                  : undefined
-              }
-              deleteIcon={<DeleteIcon />}
-              sx={{ cursor: 'pointer' }}
-            />
-          ))}
-          {isEdit &&
-            variants
-              .filter((v) => v.id === selectedVariantId)
-              .map((v) => (
+            <Box key={v.id} sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.25 }}>
+              <Chip
+                label={v.name}
+                icon={v.type === 'svg' ? <SvgIcon /> : <CodeIcon />}
+                variant={selectedVariantId === v.id ? 'filled' : 'outlined'}
+                color={selectedVariantId === v.id ? 'primary' : 'default'}
+                onClick={() => onSelectVariant(v.id)}
+                onDelete={
+                  isEdit
+                    ? () => handleDelete(v.id)
+                    : undefined
+                }
+                deleteIcon={<DeleteIcon />}
+                sx={{ cursor: 'pointer' }}
+              />
+              {isEdit && selectedVariantId === v.id && (
                 <IconButton
-                  key={`edit-${v.id}`}
                   size="small"
                   onClick={() => {
                     setEditingVariant(v);
@@ -338,10 +333,14 @@ export default function VariantManager({
                     setEditError(null);
                     setEditTab(0);
                   }}
+                  aria-label={`Edit ${v.name}`}
+                  sx={{ ml: 0.25 }}
                 >
                   <EditIcon sx={{ fontSize: 16 }} />
                 </IconButton>
-              ))}
+              )}
+            </Box>
+          ))}
         </Box>
       )}
 

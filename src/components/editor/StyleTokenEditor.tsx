@@ -327,7 +327,8 @@ export default function StyleTokenEditor({
                     style={{
                       width: 40,
                       height: 40,
-                      border: '1px solid #ccc',
+                      border: '1px solid',
+                      borderColor: 'inherit',
                       borderRadius: 4,
                       cursor: 'pointer',
                       padding: 0,
@@ -363,7 +364,7 @@ export default function StyleTokenEditor({
                 <InputLabel>Preset</InputLabel>
                 <Select
                   label="Preset"
-                  value=""
+                  value={shadowPresets.find((p) => p.value === tokens.shadows.boxShadow)?.value ?? ''}
                   onChange={(e) => updateShadows('boxShadow', e.target.value as string)}
                 >
                   {shadowPresets.map((p) => (

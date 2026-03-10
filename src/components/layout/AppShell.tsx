@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Box, Toolbar, useMediaQuery, useTheme } from '@mui/material';
 import { Outlet } from 'react-router-dom';
 import TopBar from './TopBar';
@@ -10,6 +10,11 @@ export default function AppShell() {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [sidebarOpen, setSidebarOpen] = useState(!isMobile);
   const { isEdit } = useAppMode();
+
+  // Auto-close sidebar when switching to mobile, auto-open on desktop
+  useEffect(() => {
+    setSidebarOpen(!isMobile);
+  }, [isMobile]);
 
   const drawerWidth = isEdit ? DRAWER_WIDTH_EDIT : DRAWER_WIDTH;
 
@@ -28,9 +33,10 @@ export default function AppShell() {
             duration: theme.transitions.duration.leavingScreen,
           }),
           px: { xs: 2, sm: 3, md: 4 },
-          py: 3,
+          py: { xs: 2, sm: 3 },
           maxWidth: 1200,
           width: '100%',
+          mx: 'auto',
         }}
       >
         <Toolbar /> {/* spacer for fixed AppBar */}

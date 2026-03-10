@@ -157,6 +157,9 @@ function SortableTreeItem({
           <Box
             {...attributes}
             {...listeners}
+            aria-label={`Drag ${item.label}`}
+            role="button"
+            tabIndex={0}
             sx={{
               display: 'flex',
               alignItems: 'center',
@@ -249,7 +252,7 @@ function SortableTreeItem({
               ml: 0.5,
               opacity: 0,
               transition: 'opacity 0.15s',
-              '.MuiListItemButton-root:hover &': { opacity: 1 },
+              '.MuiListItemButton-root:hover &, .MuiListItemButton-root:focus-within &': { opacity: 1 },
             }}
           >
             <Tooltip title="Rename" arrow>
@@ -640,8 +643,8 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
           boxSizing: 'border-box',
           borderRight: '1px solid',
           borderColor: 'divider',
-          top: 64,
-          height: 'calc(100vh - 64px)',
+          top: theme.mixins.toolbar.minHeight ?? 64,
+          height: `calc(100vh - ${(theme.mixins.toolbar.minHeight as number) ?? 64}px)`,
         },
       }}
     >

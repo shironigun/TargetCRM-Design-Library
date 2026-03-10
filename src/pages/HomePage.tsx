@@ -26,6 +26,7 @@ import {
   Style as VariantIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import { alpha } from '@mui/material/styles';
 import { useApp } from '../store/AppContext';
 import { useAppMode } from '../store/ModeContext';
 import { colors } from '../theme/tokens';
@@ -140,7 +141,7 @@ export default function HomePage() {
                   width: 48,
                   height: 48,
                   borderRadius: 2,
-                  bgcolor: `${s.color}14`,
+                  bgcolor: alpha(s.color, 0.08),
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',

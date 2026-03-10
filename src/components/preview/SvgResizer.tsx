@@ -61,7 +61,7 @@ export default function SvgResizer({ svgString, styleTokens }: SvgResizerProps) 
     <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
       {/* SVG container */}
       <Box
-        style={{
+        sx={{
           width,
           height: currentHeight,
           ...tokenStyle,
@@ -69,15 +69,13 @@ export default function SvgResizer({ svgString, styleTokens }: SvgResizerProps) 
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-        }}
-        dangerouslySetInnerHTML={{ __html: svgString }}
-        sx={{
           '& svg': {
             width: '100%',
             height: '100%',
             display: 'block',
           },
         }}
+        dangerouslySetInnerHTML={{ __html: svgString }}
       />
 
       {/* Dimensions label */}

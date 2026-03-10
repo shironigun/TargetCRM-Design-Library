@@ -150,10 +150,13 @@ function CodeViewer({ source, language = 'jsx' }: { source: string; language?: s
           <IconButton
             size="small"
             onClick={handleCopy}
+            aria-label="Copy code"
             sx={{ position: 'absolute', top: 8, right: 8, zIndex: 1 }}
           >
             {copied ? (
-              <Chip label="Copied!" size="small" color="success" />
+              <Typography variant="caption" sx={{ fontSize: 11, fontWeight: 600, color: 'success.main' }}>
+                Copied!
+              </Typography>
             ) : (
               <CopyIcon sx={{ fontSize: 16 }} />
             )}
@@ -392,9 +395,17 @@ export default function ComponentPage() {
         isEdit={false}
       />
 
-      {/* Variant details — show all variants if none selected, otherwise show selected */}
+      {/* Variant details */}
       {component.variants.length > 0 && (
         <Box sx={{ mt: 3 }}>
+          {/* Shared token table — shown once for the component */}
+          <Paper variant="outlined" sx={{ p: 3, mb: 3, borderRadius: 2 }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
+              Style Tokens
+            </Typography>
+            <TokenDisplayTable tokens={component.styleTokens} />
+          </Paper>
+
           {(selectedVariant ? [selectedVariant] : component.variants).map((v) => (
             <Paper
               key={v.id}
@@ -407,7 +418,7 @@ export default function ComponentPage() {
                   label={v.type.toUpperCase()}
                   size="small"
                   variant="outlined"
-                  sx={{ ml: 1, fontSize: 10 }}
+                  sx={{ ml: 1, fontSize: 11 }}
                 />
               </Typography>
 
@@ -415,12 +426,6 @@ export default function ComponentPage() {
               <Box sx={{ mb: 2 }}>
                 <LivePreview variant={v} styleTokens={component.styleTokens} />
               </Box>
-
-              {/* Token Table */}
-              <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
-                Style Tokens
-              </Typography>
-              <TokenDisplayTable tokens={component.styleTokens} />
 
               {/* Code Viewer */}
               <CodeViewer source={v.source} />

@@ -22,7 +22,7 @@ import {
   Add as AddIcon,
   Widgets as ComponentIcon,
 } from '@mui/icons-material';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Navigate } from 'react-router-dom';
 import { useApp } from '../store/AppContext';
 import { useAppMode } from '../store/ModeContext';
 
@@ -47,8 +47,7 @@ export default function ItemPage() {
 
   // If item has a linked component, redirect there
   if (item.componentId) {
-    navigate(`/component/${item.componentId}`, { replace: true });
-    return null;
+    return <Navigate to={`/component/${item.componentId}`} replace />;
   }
 
   const unlinkedComponents = Object.values(state.components).filter(

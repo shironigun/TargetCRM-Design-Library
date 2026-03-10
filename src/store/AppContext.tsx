@@ -280,7 +280,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Persist to localStorage on every change (debounced)
   useEffect(() => {
     const timer = setTimeout(() => {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      } catch {
+        // localStorage full or unavailable — ignore
+      }
     }, 300);
     return () => clearTimeout(timer);
   }, [state]);

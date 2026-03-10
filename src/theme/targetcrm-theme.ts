@@ -1,5 +1,5 @@
 // TargetCRM Design System — MUI Theme Configuration
-// Built from canonical design tokens.  Uses MUI v6 createTheme API.
+// Built from canonical design tokens.  Uses MUI v7 createTheme API.
 
 import { createTheme, type ThemeOptions } from '@mui/material/styles';
 import { colors, borderRadius, shadows, typography } from './tokens';
@@ -262,7 +262,7 @@ const themeOptions: ThemeOptions = {
         {
           props: { size: 'small' },
           style: {
-            '& .MuiOutlinedInput-root': {
+            '&:not(:has(.MuiInputBase-inputMultiline)) .MuiOutlinedInput-root': {
               height: 39,
             },
           },
@@ -270,7 +270,7 @@ const themeOptions: ThemeOptions = {
         {
           props: { size: 'medium' },
           style: {
-            '& .MuiOutlinedInput-root': {
+            '&:not(:has(.MuiInputBase-inputMultiline)) .MuiOutlinedInput-root': {
               height: 54,
             },
           },
@@ -281,7 +281,6 @@ const themeOptions: ThemeOptions = {
     MuiChip: {
       styleOverrides: {
         root: {
-          height: 23,
           borderRadius: borderRadius.lg,
           fontSize: 12,
           fontWeight: 500,

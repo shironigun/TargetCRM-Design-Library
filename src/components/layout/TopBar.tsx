@@ -79,7 +79,7 @@ export default function TopBar({ onMenuToggle }: TopBarProps) {
       >
         <Toolbar sx={{ gap: 1 }}>
           {isMobile && (
-            <IconButton color="inherit" edge="start" onClick={onMenuToggle}>
+            <IconButton color="inherit" edge="start" onClick={onMenuToggle} aria-label="Toggle navigation">
               <MenuIcon />
             </IconButton>
           )}
@@ -87,6 +87,7 @@ export default function TopBar({ onMenuToggle }: TopBarProps) {
           {/* Logo / Brand */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mr: 2 }}>
             <Box
+              aria-hidden="true"
               sx={{
                 width: 32,
                 height: 32,
@@ -111,7 +112,7 @@ export default function TopBar({ onMenuToggle }: TopBarProps) {
               </Typography>
               <Typography
                 variant="caption"
-                sx={{ color: 'rgba(255,255,255,0.7)', lineHeight: 1, fontSize: 10 }}
+                sx={{ color: 'rgba(255,255,255,0.7)', lineHeight: 1, fontSize: 11 }}
               >
                 Design Library
               </Typography>
@@ -127,7 +128,7 @@ export default function TopBar({ onMenuToggle }: TopBarProps) {
                 bgcolor: colors.warning.main,
                 color: '#fff',
                 fontWeight: 700,
-                fontSize: 10,
+                fontSize: 11,
                 height: 22,
               }}
             />
@@ -141,6 +142,7 @@ export default function TopBar({ onMenuToggle }: TopBarProps) {
             exclusive
             onChange={handleModeToggle}
             size="small"
+            aria-label="Edit or view mode"
             sx={{
               bgcolor: 'rgba(255,255,255,0.12)',
               borderRadius: 2,
@@ -151,8 +153,8 @@ export default function TopBar({ onMenuToggle }: TopBarProps) {
                 textTransform: 'none',
                 fontSize: 12,
                 fontWeight: 600,
-                px: 1.5,
-                py: 0.5,
+                px: 2,
+                py: 0.75,
                 '&.Mui-selected': {
                   bgcolor: isEdit
                     ? 'rgba(249,147,47,0.35)'
@@ -169,11 +171,11 @@ export default function TopBar({ onMenuToggle }: TopBarProps) {
             }}
           >
             <ToggleButton value="view">
-              <ViewIcon sx={{ fontSize: 16, mr: 0.5 }} />
+              <ViewIcon sx={{ fontSize: 18, mr: 0.75 }} />
               View
             </ToggleButton>
             <ToggleButton value="edit">
-              <EditIcon sx={{ fontSize: 16, mr: 0.5 }} />
+              <EditIcon sx={{ fontSize: 18, mr: 0.75 }} />
               Edit
             </ToggleButton>
           </ToggleButtonGroup>
@@ -184,6 +186,7 @@ export default function TopBar({ onMenuToggle }: TopBarProps) {
             exclusive
             onChange={(_, val) => val && setPlatform(val as Platform)}
             size="small"
+            aria-label="Platform selection"
             sx={{
               bgcolor: 'rgba(255,255,255,0.12)',
               borderRadius: 2,
@@ -193,8 +196,8 @@ export default function TopBar({ onMenuToggle }: TopBarProps) {
                 textTransform: 'none',
                 fontSize: 12,
                 fontWeight: 600,
-                px: 1.5,
-                py: 0.5,
+                px: 2,
+                py: 0.75,
                 '&.Mui-selected': {
                   bgcolor: 'rgba(255,255,255,0.24)',
                   color: '#fff',
@@ -205,11 +208,11 @@ export default function TopBar({ onMenuToggle }: TopBarProps) {
             }}
           >
             <ToggleButton value="web">
-              <WebIcon sx={{ fontSize: 16, mr: 0.5 }} />
+              <WebIcon sx={{ fontSize: 18, mr: 0.75 }} />
               Web
             </ToggleButton>
             <ToggleButton value="mobile">
-              <MobileIcon sx={{ fontSize: 16, mr: 0.5 }} />
+              <MobileIcon sx={{ fontSize: 18, mr: 0.75 }} />
               Mobile
             </ToggleButton>
           </ToggleButtonGroup>
