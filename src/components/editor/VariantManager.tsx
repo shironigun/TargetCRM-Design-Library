@@ -106,7 +106,7 @@ function convertSvgToReact(svgString: string, name: string): string {
 async function validateJsx(source: string): Promise<string | null> {
   try {
     const babel = await import('@babel/standalone');
-    babel.transform(source, { presets: ['react'], filename: 'test.tsx' });
+    babel.transform(source, { presets: ['react', 'typescript'], filename: 'test.tsx' });
     return null; // valid
   } catch (err) {
     return err instanceof Error ? err.message : String(err);

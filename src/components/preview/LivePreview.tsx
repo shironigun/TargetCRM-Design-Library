@@ -148,9 +148,9 @@ function evaluateCode(source: string): React.ReactNode {
     .replace(/export\s+default\s+/g, '')
     .replace(/export\s+/g, '');
 
-  // Transpile JSX → JS
+  // Transpile TSX/JSX → JS
   const result = transform(cleanedSource, {
-    presets: ['react'],
+    presets: ['react', 'typescript'],
     filename: 'component.tsx',
   });
 
