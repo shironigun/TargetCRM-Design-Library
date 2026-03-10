@@ -236,7 +236,21 @@ function evaluateCode(source: string): React.ReactNode {
     cleanedLines.push(line);
   }
 
-  let cleanedSource = cleanedLines.join('\n')
+  let cleanedSource = cleanedLines.join('\n');
+
+  // Capture the name of the export-default function/const BEFORE stripping exports
+  const exportDefaultFuncMatch = cleanedSource.match(
+    /export\s+default\s+function\s+(\w+)/,
+  );
+  // Also handle `export default X` (referencing a previously defined name)
+  const exportDefaultRefMatch = cleanedSource.match(
+    /export\s+default\s+(\w+)\s*;/,
+  );
+  const exportDefaultName = exportDefaultFuncMatch?.[1]
+    ?? exportDefaultRefMatch?.[1]
+    ?? null;
+
+  cleanedSource = cleanedSource
     .replace(/export\s+default\s+/g, '')
     .replace(/export\s+/g, '');
 
@@ -252,10 +266,28 @@ function evaluateCode(source: string): React.ReactNode {
   // We look for a function component or a JSX expression
   let code = result.code;
 
-  // If the code defines a function component, call it
-  const funcMatch = code.match(/function\s+(\w+)\s*\(/);
-  if (funcMatch) {
-    code += `\nreturn React.createElement(${funcMatch[1]});`;
+  // Collect ALL function names defined in the code (handles both
+  // `function Foo(` and Babel-compiled `var Foo = function Foo(`)
+  const allFuncs: string[] = [];
+  const funcRegex = /(?:function\s+(\w+)\s*\(|var\s+(\w+)\s*=\s*function\s)/g;
+  let fm;
+  while ((fm = funcRegex.exec(code)) !== null) {
+    const name = fm[1] || fm[2];
+    if (name && !allFuncs.includes(name)) allFuncs.push(name);
+  }
+
+  if (allFuncs.length > 0) {
+    // Priority: 1) export-default name, 2) last PascalCase function, 3) last function
+    let componentName: string;
+    if (exportDefaultName && allFuncs.includes(exportDefaultName)) {
+      componentName = exportDefaultName;
+    } else {
+      const pascalFuncs = allFuncs.filter((n) => /^[A-Z]/.test(n));
+      componentName = pascalFuncs.length > 0
+        ? pascalFuncs[pascalFuncs.length - 1]
+        : allFuncs[allFuncs.length - 1];
+    }
+    code += `\nreturn React.createElement(${componentName});`;
   } else {
     // Assume the code is a JSX expression — wrap the last statement as return
     const lines = code.trim().split('\n');
