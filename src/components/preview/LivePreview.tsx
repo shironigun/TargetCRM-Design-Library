@@ -84,24 +84,33 @@ const RUNTIME_MODULES: Record<string, unknown> = {
 
 /** Resolve a module path to a runtime object.
  *  - Exact matches (e.g. '@mui/material') → return the module
- *  - Subpath matches (e.g. '@mui/material/Button') → return parent module
+ *  - Subpath matches (e.g. '@mui/material/Button') → return parent + subpathKey
  *  - Allowed but not available at runtime (syncfusion, maui) → return empty stub
  */
-function resolveImport(modulePath: string): { mod: unknown; strip: boolean } | null {
+function resolveImport(modulePath: string): {
+  mod: Record<string, unknown>;
+  /** The subpath component name, e.g. 'Button' for '@mui/material/Button' */
+  subpathKey: string | null;
+} | null {
   // Exact match first
   if (RUNTIME_MODULES[modulePath]) {
-    return { mod: RUNTIME_MODULES[modulePath], strip: false };
+    return { mod: RUNTIME_MODULES[modulePath] as Record<string, unknown>, subpathKey: null };
   }
   // Subpath: try parent package  (e.g. '@mui/material/Button' → '@mui/material')
   const parts = modulePath.split('/');
   const parentKey = modulePath.startsWith('@') ? parts.slice(0, 2).join('/') : parts[0];
   if (RUNTIME_MODULES[parentKey]) {
-    return { mod: RUNTIME_MODULES[parentKey], strip: false };
+    // The last path segment is the component name
+    const subpathKey = parts[parts.length - 1];
+    return {
+      mod: RUNTIME_MODULES[parentKey] as Record<string, unknown>,
+      subpathKey: subpathKey !== parentKey.split('/').pop() ? subpathKey : null,
+    };
   }
   // Check if it matches an allowed prefix — return empty stub so import is stripped
   const isAllowed = modulePath === 'react' || ALLOWED_PREFIXES.some((p) => modulePath.startsWith(p));
   if (isAllowed) {
-    return { mod: {}, strip: true };
+    return { mod: {} as Record<string, unknown>, subpathKey: null };
   }
   return null; // not allowed
 }
@@ -128,7 +137,7 @@ function processImportStatement(stmt: string, scope: Record<string, unknown>): v
       `Import from "${modulePath}" is not allowed. Allowed: react, @mui/*, @syncfusion/*, @emotion/*, maui*`,
     );
   }
-  const mod = resolved.mod as Record<string, unknown>;
+  const { mod, subpathKey } = resolved;
 
   // Get the part before `from`
   const specPart = stmt.replace(/^import\s+/, '').replace(/\s+from\s+['"][^'"]+['"]\s*;?\s*$/, '').trim();
@@ -137,7 +146,9 @@ function processImportStatement(stmt: string, scope: Record<string, unknown>): v
   // namespace:  * as Foo
   const nsMatch = specPart.match(/^\*\s+as\s+(\w+)$/);
   if (nsMatch) {
-    scope[nsMatch[1]] = mod;
+    // For subpath (e.g. `import * as Select from '@mui/material/Select'`),
+    // scope the specific export; otherwise give the whole module.
+    scope[nsMatch[1]] = subpathKey ? (mod[subpathKey] ?? mod) : mod;
     return;
   }
 
@@ -150,7 +161,14 @@ function processImportStatement(stmt: string, scope: Record<string, unknown>): v
 
   // Default import
   if (defaultPart) {
-    scope[defaultPart] = mod['default'] || mod;
+    if (subpathKey) {
+      // Subpath import: `import Select from '@mui/material/Select'`
+      // → mod is @mui/material barrel, Select = mod['Select']
+      const resolved = mod[subpathKey];
+      scope[defaultPart] = resolved ?? mod;
+    } else {
+      scope[defaultPart] = mod['default'] || mod;
+    }
   }
 
   // Named imports
@@ -163,6 +181,7 @@ function processImportStatement(stmt: string, scope: Record<string, unknown>): v
       const parts = s.split(/\s+as\s+/);
       const importName = parts[0].trim();
       const localName = (parts[1] || importName).trim();
+      // Try direct module export first, then subpath component's property
       scope[localName] = mod[importName];
     });
   }
