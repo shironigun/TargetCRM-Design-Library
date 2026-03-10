@@ -183,11 +183,29 @@ function evaluateCode(source: string): React.ReactNode {
   const scopeKeys = Object.keys(scope);
   const scopeValues = scopeKeys.map((k) => scope[k]);
   const fn = new Function(...scopeKeys, code);
-  return fn(...scopeValues) as React.ReactNode;
+  const output = fn(...scopeValues);
+
+  // Guard: reject plain objects that aren't valid React children
+  if (
+    output !== null &&
+    output !== undefined &&
+    typeof output === 'object' &&
+    !React.isValidElement(output) &&
+    !Array.isArray(output)
+  ) {
+    throw new Error(
+      'Component returned an invalid object instead of a React element. ' +
+        'Switch to raw SVG render mode for safe display.',
+    );
+  }
+  return output as React.ReactNode;
 }
 
 export default function LivePreview({ variant, styleTokens }: LivePreviewProps) {
-  const [svgMode, setSvgMode] = useState<'component' | 'raw'>('component');
+  // Default SVG variants to raw mode (safe — uses SvgResizer with slider)
+  const [svgMode, setSvgMode] = useState<'component' | 'raw'>(
+    variant.type === 'svg' ? 'raw' : 'component',
+  );
 
   const tokenStyle = useMemo(() => tokensToStyle(styleTokens), [styleTokens]);
 
@@ -222,21 +240,22 @@ export default function LivePreview({ variant, styleTokens }: LivePreviewProps) 
         overflow: 'hidden',
       }}
     >
-      {/* SVG mode toggle */}
+      {/* SVG mode toggle — always visible for SVG variants */}
       {variant.type === 'svg' && variant.svgOriginal && (
         <Box
           sx={{
             px: 2,
-            py: 1,
+            py: 1.5,
             borderBottom: '1px solid',
             borderColor: 'divider',
             display: 'flex',
             alignItems: 'center',
-            gap: 1,
+            gap: 1.5,
+            bgcolor: 'grey.50',
           }}
         >
-          <Typography variant="caption" color="text.secondary">
-            Render as:
+          <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>
+            Render mode:
           </Typography>
           <ToggleButtonGroup
             value={svgMode}
@@ -244,13 +263,13 @@ export default function LivePreview({ variant, styleTokens }: LivePreviewProps) 
             onChange={(_, val) => val && setSvgMode(val)}
             size="small"
           >
-            <ToggleButton value="component">
-              <CodeIcon sx={{ fontSize: 14, mr: 0.5 }} />
-              React
+            <ToggleButton value="raw" sx={{ px: 2 }}>
+              <ImageIcon sx={{ fontSize: 16, mr: 0.5 }} />
+              Raw SVG
             </ToggleButton>
-            <ToggleButton value="raw">
-              <ImageIcon sx={{ fontSize: 14, mr: 0.5 }} />
-              SVG
+            <ToggleButton value="component" sx={{ px: 2 }}>
+              <CodeIcon sx={{ fontSize: 16, mr: 0.5 }} />
+              React Component
             </ToggleButton>
           </ToggleButtonGroup>
         </Box>

@@ -44,8 +44,22 @@ interface VariantManagerProps {
 function convertSvgToReact(svgString: string, name: string): string {
   const cleanName = name.replace(/[^a-zA-Z0-9]/g, '') || 'SvgComponent';
 
+  // Sanitise SVG: strip XML processing instructions, DOCTYPE, and HTML comments
+  let sanitised = svgString
+    .replace(/<\?xml[^?]*\?>/gi, '')
+    .replace(/<!DOCTYPE[^>]*>/gi, '')
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .trim();
+
+  // Escape curly braces inside <style> blocks so JSX doesn't interpret them
+  sanitised = sanitised.replace(
+    /(<style[^>]*>)([\s\S]*?)(<\/style>)/gi,
+    (_m, open: string, body: string, close: string) =>
+      `${open}{\`${body.replace(/`/g, '\\`')}\`}${close}`,
+  );
+
   // Convert SVG attributes to JSX camelCase equivalents
-  let jsx = svgString
+  let jsx = sanitised
     // HTML attr → JSX attr
     .replace(/\bclass=/g, 'className=')
     .replace(/\bfill-rule=/g, 'fillRule=')
