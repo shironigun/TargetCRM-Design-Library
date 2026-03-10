@@ -106,45 +106,118 @@ function resolveImport(modulePath: string): { mod: unknown; strip: boolean } | n
   return null; // not allowed
 }
 
+/**
+ * Parse a single import statement string, resolve the module,
+ * and inject bindings into the given scope object.
+ *
+ * Supports:  import X from '...'
+ *            import { A, B as C } from '...'
+ *            import X, { A } from '...'
+ *            import * as X from '...'
+ *            import '...'  (side-effect only, ignored)
+ */
+function processImportStatement(stmt: string, scope: Record<string, unknown>): void {
+  // Extract module path
+  const fromMatch = stmt.match(/from\s+['"]([^'"]+)['"]/);
+  if (!fromMatch) return; // side-effect import like `import 'foo'`
+
+  const modulePath = fromMatch[1];
+  const resolved = resolveImport(modulePath);
+  if (!resolved) {
+    throw new Error(
+      `Import from "${modulePath}" is not allowed. Allowed: react, @mui/*, @syncfusion/*, @emotion/*, maui*`,
+    );
+  }
+  const mod = resolved.mod as Record<string, unknown>;
+
+  // Get the part before `from`
+  const specPart = stmt.replace(/^import\s+/, '').replace(/\s+from\s+['"][^'"]+['"]\s*;?\s*$/, '').trim();
+  if (!specPart) return;
+
+  // namespace:  * as Foo
+  const nsMatch = specPart.match(/^\*\s+as\s+(\w+)$/);
+  if (nsMatch) {
+    scope[nsMatch[1]] = mod;
+    return;
+  }
+
+  // Split default and named:  "React, { useState, useEffect as ue }"
+  // or just named:  "{ useState }"
+  // or just default:  "React"
+  const braceMatch = specPart.match(/\{([^}]*)\}/);
+  const namedPart = braceMatch ? braceMatch[1] : null;
+  const defaultPart = specPart.replace(/\{[^}]*\}/, '').replace(/,/g, '').trim();
+
+  // Default import
+  if (defaultPart) {
+    scope[defaultPart] = mod['default'] || mod;
+  }
+
+  // Named imports
+  if (namedPart) {
+    namedPart.split(',').forEach((spec) => {
+      const s = spec.trim();
+      if (!s) return;
+      // Handle `type Foo` — skip type-only imports
+      if (s.startsWith('type ')) return;
+      const parts = s.split(/\s+as\s+/);
+      const importName = parts[0].trim();
+      const localName = (parts[1] || importName).trim();
+      scope[localName] = mod[importName];
+    });
+  }
+}
+
 /** Transpile JSX source and evaluate into a React element */
 function evaluateCode(source: string): React.ReactNode {
-  // Strip import statements and collect what they import
-  const importRegex =
-    /import\s+(?:\{([^}]*)\}|\*\s+as\s+(\w+)|(\w+))\s+from\s+['"]([^'"]+)['"]\s*;?/g;
   const scope: Record<string, unknown> = {
     React,
     ...MuiMaterial,
     ...MuiIcons,
   };
 
-  let cleanedSource = source;
-  let match;
-  while ((match = importRegex.exec(source)) !== null) {
-    const [fullMatch, namedImports, namespaceImport, defaultImport, modulePath] = match;
-    const resolved = resolveImport(modulePath);
-    if (!resolved) {
-      throw new Error(`Import from "${modulePath}" is not allowed. Allowed: react, @mui/*, @syncfusion/*, @emotion/*, maui*`);
-    }
-    const mod = resolved.mod;
+  // ── Strip ALL import statements (line-by-line) and populate scope ──
+  // Handles: import X from '...',  import { A, B } from '...',
+  //          import X, { A } from '...',  import * as X from '...',
+  //          import type { X } from '...',  import '...' (side-effect)
+  const lines = source.split('\n');
+  const cleanedLines: string[] = [];
+  let inMultiLineImport = false;
+  let importBuffer = '';
 
-    if (namedImports) {
-      namedImports.split(',').forEach((spec) => {
-        const parts = spec.trim().split(/\s+as\s+/);
-        const importName = parts[0].trim();
-        const localName = (parts[1] || importName).trim();
-        scope[localName] = (mod as Record<string, unknown>)[importName];
-      });
-    } else if (namespaceImport) {
-      scope[namespaceImport] = mod;
-    } else if (defaultImport) {
-      scope[defaultImport] = (mod as Record<string, unknown>)['default'] || mod;
+  for (const line of lines) {
+    if (inMultiLineImport) {
+      importBuffer += ' ' + line;
+      if (line.includes("from ") || line.match(/['"];?\s*$/)) {
+        processImportStatement(importBuffer, scope);
+        inMultiLineImport = false;
+        importBuffer = '';
+      }
+      continue;
     }
 
-    cleanedSource = cleanedSource.replace(fullMatch, '');
+    const trimmed = line.trim();
+
+    // Skip type-only imports entirely
+    if (/^import\s+type\s/.test(trimmed)) continue;
+
+    // Detect start of an import statement
+    if (/^import\s/.test(trimmed)) {
+      // Check if it's a complete single-line import
+      if (trimmed.includes('from ') || /^import\s+['"]/.test(trimmed)) {
+        processImportStatement(trimmed, scope);
+      } else {
+        // Multi-line import (e.g. opening brace not closed)
+        inMultiLineImport = true;
+        importBuffer = trimmed;
+      }
+      continue;
+    }
+
+    cleanedLines.push(line);
   }
 
-  // Also strip any export default/export statements
-  cleanedSource = cleanedSource
+  let cleanedSource = cleanedLines.join('\n')
     .replace(/export\s+default\s+/g, '')
     .replace(/export\s+/g, '');
 
