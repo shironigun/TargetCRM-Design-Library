@@ -40,25 +40,51 @@ interface VariantManagerProps {
 
 // ─── SVG → SVGR conversion (runtime) ─────────────────────────────────────────
 
-async function convertSvgToReact(svgString: string, name: string): Promise<string> {
-  try {
-    // Dynamic import of @svgr/core
-    const { transform } = await import('@svgr/core');
-    const result = await transform(svgString, {
-      plugins: ['@svgr/plugin-jsx'],
-      jsxRuntime: 'classic',
-      expandProps: 'end',
-    }, { componentName: name.replace(/[^a-zA-Z0-9]/g, '') || 'SvgComponent' });
-    return result;
-  } catch (err) {
-    // Fallback: simple SVG wrapper component
-    const cleanName = name.replace(/[^a-zA-Z0-9]/g, '') || 'SvgComponent';
-    return `function ${cleanName}(props) {
-  return (
-    <svg {...props} dangerouslySetInnerHTML={{ __html: \`${svgString.replace(/<svg[^>]*>/, '').replace(/<\/svg>/, '').replace(/`/g, '\\`')}\` }} />
-  );
-}`;
+/** Convert raw SVG markup into a JSX function component string (browser-safe, no Node deps). */
+function convertSvgToReact(svgString: string, name: string): string {
+  const cleanName = name.replace(/[^a-zA-Z0-9]/g, '') || 'SvgComponent';
+
+  // Convert SVG attributes to JSX camelCase equivalents
+  let jsx = svgString
+    // HTML attr → JSX attr
+    .replace(/\bclass=/g, 'className=')
+    .replace(/\bfill-rule=/g, 'fillRule=')
+    .replace(/\bclip-rule=/g, 'clipRule=')
+    .replace(/\bclip-path=/g, 'clipPath=')
+    .replace(/\bstroke-width=/g, 'strokeWidth=')
+    .replace(/\bstroke-linecap=/g, 'strokeLinecap=')
+    .replace(/\bstroke-linejoin=/g, 'strokeLinejoin=')
+    .replace(/\bstroke-dasharray=/g, 'strokeDasharray=')
+    .replace(/\bstroke-dashoffset=/g, 'strokeDashoffset=')
+    .replace(/\bstroke-miterlimit=/g, 'strokeMiterlimit=')
+    .replace(/\bstroke-opacity=/g, 'strokeOpacity=')
+    .replace(/\bfill-opacity=/g, 'fillOpacity=')
+    .replace(/\bfont-family=/g, 'fontFamily=')
+    .replace(/\bfont-size=/g, 'fontSize=')
+    .replace(/\bfont-weight=/g, 'fontWeight=')
+    .replace(/\btext-anchor=/g, 'textAnchor=')
+    .replace(/\btext-decoration=/g, 'textDecoration=')
+    .replace(/\bdominant-baseline=/g, 'dominantBaseline=')
+    .replace(/\balignment-baseline=/g, 'alignmentBaseline=')
+    .replace(/\bstop-color=/g, 'stopColor=')
+    .replace(/\bstop-opacity=/g, 'stopOpacity=')
+    .replace(/\bcolor-interpolation=/g, 'colorInterpolation=')
+    .replace(/\bcolor-interpolation-filters=/g, 'colorInterpolationFilters=')
+    .replace(/\bflood-color=/g, 'floodColor=')
+    .replace(/\bflood-opacity=/g, 'floodOpacity=')
+    .replace(/\blighting-color=/g, 'lightingColor=')
+    .replace(/\bxlink:href=/g, 'xlinkHref=')
+    .replace(/\bxml:space=/g, 'xmlSpace=')
+    // Remove xmlns:xlink (not valid in JSX)
+    .replace(/\s+xmlns:xlink="[^"]*"/g, '');
+
+  // Spread props onto the root <svg> element
+  jsx = jsx.replace(/^(<svg)(\s)/, '$1 {...props}$2');
+  if (!jsx.includes('{...props}')) {
+    jsx = jsx.replace('<svg', '<svg {...props}');
   }
+
+  return `function ${cleanName}(props) {\n  return (\n    ${jsx}\n  );\n}`;
 }
 
 // ─── JSX Validation ───────────────────────────────────────────────────────────
@@ -147,7 +173,7 @@ export default function VariantManager({
     setSvgConverting(true);
     setSvgError(null);
     try {
-      const svgrOutput = await convertSvgToReact(svgContent, svgName);
+      const svgrOutput = convertSvgToReact(svgContent, svgName);
       const variant: Variant = {
         id: nanoid(),
         name: svgName.trim(),
