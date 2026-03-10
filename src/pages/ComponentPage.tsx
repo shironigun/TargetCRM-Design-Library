@@ -10,12 +10,6 @@ import {
   Paper,
   Button,
   Divider,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Collapse,
   IconButton,
   Dialog,
@@ -25,6 +19,8 @@ import {
   DialogActions,
   Chip,
   Grid,
+  Tabs,
+  Tab,
 } from '@mui/material';
 import {
   Delete as DeleteIcon,
@@ -43,33 +39,162 @@ import VariantManager from '../components/editor/VariantManager';
 import LivePreview from '../components/preview/LivePreview';
 import type { StyleTokens } from '../types';
 
-// ─── View Mode: Token Display Table ──────────────────────────────────────────
+// ─── View Mode: Box Model Diagram (Chrome DevTools style) ────────────────────
 
-function TokenDisplayTable({ tokens }: { tokens: StyleTokens }) {
-  const rows: { group: string; property: string; value: string }[] = [];
+function BoxModelDiagram({ tokens }: { tokens: StyleTokens }) {
+  const { boxModel: bm } = tokens;
+  const hasMargin = bm.marginTop || bm.marginRight || bm.marginBottom || bm.marginLeft;
+  const hasPadding = bm.paddingTop || bm.paddingRight || bm.paddingBottom || bm.paddingLeft;
+  const hasDims = bm.width || bm.height || bm.minWidth || bm.maxWidth || bm.minHeight || bm.maxHeight || bm.borderRadius;
 
-  // Box model
-  Object.entries(tokens.boxModel).forEach(([k, v]) => {
-    if (v) rows.push({ group: 'Box Model', property: k, value: v });
-  });
-  // Typography
-  Object.entries(tokens.typography).forEach(([k, v]) => {
-    if (v) rows.push({ group: 'Typography', property: k, value: v });
-  });
-  // Colours
-  Object.entries(tokens.colours).forEach(([k, v]) => {
-    if (v) rows.push({ group: 'Colours', property: k, value: v });
-  });
-  // Shadows
-  Object.entries(tokens.shadows).forEach(([k, v]) => {
-    if (v) rows.push({ group: 'Shadows', property: k, value: v });
-  });
-  // Custom
-  Object.entries(tokens.custom).forEach(([k, v]) => {
-    if (v) rows.push({ group: 'Custom', property: k, value: v });
-  });
+  if (!hasMargin && !hasPadding && !hasDims) {
+    return (
+      <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+        No box model tokens set.
+      </Typography>
+    );
+  }
 
-  if (rows.length === 0) {
+  const val = (v: string) => v || '\u2013';
+  const cellSx = {
+    fontFamily: 'monospace',
+    fontSize: 11,
+    textAlign: 'center' as const,
+    lineHeight: 1.2,
+    color: 'text.primary',
+    minWidth: 28,
+  };
+
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+      {/* Box model diagram */}
+      <Box sx={{ display: 'inline-flex', justifyContent: 'center' }}>
+        {/* Margin layer */}
+        <Box
+          sx={{
+            border: '1px dashed',
+            borderColor: '#f9cc9d',
+            bgcolor: 'rgba(249,204,157,0.15)',
+            p: 0,
+            position: 'relative',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+          }}
+        >
+          <Typography sx={{ ...cellSx, fontSize: 10, color: '#b07730', position: 'absolute', top: 2, left: 4 }}>
+            margin
+          </Typography>
+          <Box sx={cellSx}>{val(bm.marginTop)}</Box>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <Box sx={{ ...cellSx, px: 1 }}>{val(bm.marginLeft)}</Box>
+            {/* Padding layer */}
+            <Box
+              sx={{
+                border: '1px dashed',
+                borderColor: '#b4d6a5',
+                bgcolor: 'rgba(180,214,165,0.15)',
+                p: 0,
+                position: 'relative',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                minWidth: 140,
+              }}
+            >
+              <Typography sx={{ ...cellSx, fontSize: 10, color: '#558040', position: 'absolute', top: 2, left: 4 }}>
+                padding
+              </Typography>
+              <Box sx={cellSx}>{val(bm.paddingTop)}</Box>
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <Box sx={{ ...cellSx, px: 1 }}>{val(bm.paddingLeft)}</Box>
+                {/* Element core */}
+                <Box
+                  sx={{
+                    border: '1px solid',
+                    borderColor: '#7ab9db',
+                    bgcolor: 'rgba(122,185,219,0.15)',
+                    px: 2,
+                    py: 1.5,
+                    minWidth: 80,
+                    textAlign: 'center',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 0.25,
+                  }}
+                >
+                  <Typography sx={{ fontFamily: 'monospace', fontSize: 11 }}>
+                    {bm.width || 'auto'} &times; {bm.height || 'auto'}
+                  </Typography>
+                  {bm.borderRadius && (
+                    <Typography sx={{ fontFamily: 'monospace', fontSize: 10, color: 'text.secondary' }}>
+                      r: {bm.borderRadius}
+                    </Typography>
+                  )}
+                </Box>
+                <Box sx={{ ...cellSx, px: 1 }}>{val(bm.paddingRight)}</Box>
+              </Box>
+              <Box sx={cellSx}>{val(bm.paddingBottom)}</Box>
+            </Box>
+            <Box sx={{ ...cellSx, px: 1 }}>{val(bm.marginRight)}</Box>
+          </Box>
+          <Box sx={cellSx}>{val(bm.marginBottom)}</Box>
+        </Box>
+      </Box>
+
+      {/* Min/Max dimensions */}
+      {(bm.minWidth || bm.maxWidth || bm.minHeight || bm.maxHeight) && (
+        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mt: 0.5 }}>
+          {bm.minWidth && (
+            <Typography variant="caption" sx={{ fontFamily: 'monospace' }}>
+              min-w: {bm.minWidth}
+            </Typography>
+          )}
+          {bm.maxWidth && (
+            <Typography variant="caption" sx={{ fontFamily: 'monospace' }}>
+              max-w: {bm.maxWidth}
+            </Typography>
+          )}
+          {bm.minHeight && (
+            <Typography variant="caption" sx={{ fontFamily: 'monospace' }}>
+              min-h: {bm.minHeight}
+            </Typography>
+          )}
+          {bm.maxHeight && (
+            <Typography variant="caption" sx={{ fontFamily: 'monospace' }}>
+              max-h: {bm.maxHeight}
+            </Typography>
+          )}
+        </Box>
+      )}
+    </Box>
+  );
+}
+
+// ─── View Mode: Categorized Token Display ────────────────────────────────────
+
+function TokenCategorySection({ title, children, empty }: { title: string; children: React.ReactNode; empty?: boolean }) {
+  if (empty) return null;
+  return (
+    <Box sx={{ mb: 2 }}>
+      <Typography variant="subtitle2" sx={{ fontWeight: 700, fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.5, color: 'text.secondary', mb: 1 }}>
+        {title}
+      </Typography>
+      {children}
+    </Box>
+  );
+}
+
+function TokenDisplayCategorized({ tokens }: { tokens: StyleTokens }) {
+  const { boxModel: bm, typography: ty, colours: co, shadows: sh, custom } = tokens;
+
+  const hasBox = Object.values(bm).some(Boolean);
+  const hasTypo = Object.values(ty).some(Boolean);
+  const hasColour = Object.values(co).some(Boolean);
+  const hasShadow = sh.boxShadow && sh.boxShadow !== 'none';
+  const hasCustom = Object.entries(custom).some(([, v]) => !!v);
+
+  if (!hasBox && !hasTypo && !hasColour && !hasShadow && !hasCustom) {
     return (
       <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
         No style tokens set.
@@ -78,44 +203,109 @@ function TokenDisplayTable({ tokens }: { tokens: StyleTokens }) {
   }
 
   return (
-    <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2, mb: 2 }}>
-      <Table size="small">
-        <TableHead>
-          <TableRow>
-            <TableCell sx={{ fontWeight: 700, fontSize: 12 }}>Group</TableCell>
-            <TableCell sx={{ fontWeight: 700, fontSize: 12 }}>Property</TableCell>
-            <TableCell sx={{ fontWeight: 700, fontSize: 12 }}>Value</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {rows.map((r, i) => (
-            <TableRow key={`${r.group}-${r.property}-${i}`}>
-              <TableCell sx={{ fontSize: 12 }}>{r.group}</TableCell>
-              <TableCell sx={{ fontFamily: 'monospace', fontSize: 12 }}>
-                {r.property}
-              </TableCell>
-              <TableCell sx={{ fontFamily: 'monospace', fontSize: 12 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  {(r.group === 'Colours' && r.value.startsWith('#')) && (
-                    <Box
-                      sx={{
-                        width: 14,
-                        height: 14,
-                        borderRadius: '3px',
-                        bgcolor: r.value,
-                        border: '1px solid rgba(0,0,0,0.15)',
-                        flexShrink: 0,
-                      }}
-                    />
-                  )}
-                  {r.value}
+    <Box>
+      {/* Box Model — visual diagram */}
+      <TokenCategorySection title="Box Model" empty={!hasBox}>
+        <BoxModelDiagram tokens={tokens} />
+      </TokenCategorySection>
+
+      {/* Typography */}
+      <TokenCategorySection title="Typography" empty={!hasTypo}>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+          {ty.fontFamily && (
+            <Chip size="small" variant="outlined" label={`family: ${ty.fontFamily}`} sx={{ fontFamily: 'monospace', fontSize: 11 }} />
+          )}
+          {ty.fontWeight && (
+            <Chip size="small" variant="outlined" label={`weight: ${ty.fontWeight}`} sx={{ fontFamily: 'monospace', fontSize: 11 }} />
+          )}
+          {ty.fontSize && (
+            <Chip size="small" variant="outlined" label={`size: ${ty.fontSize}`} sx={{ fontFamily: 'monospace', fontSize: 11 }} />
+          )}
+          {ty.lineHeight && (
+            <Chip size="small" variant="outlined" label={`line-height: ${ty.lineHeight}`} sx={{ fontFamily: 'monospace', fontSize: 11 }} />
+          )}
+          {ty.letterSpacing && (
+            <Chip size="small" variant="outlined" label={`letter-spacing: ${ty.letterSpacing}`} sx={{ fontFamily: 'monospace', fontSize: 11 }} />
+          )}
+          {ty.textTransform && (
+            <Chip size="small" variant="outlined" label={`transform: ${ty.textTransform}`} sx={{ fontFamily: 'monospace', fontSize: 11 }} />
+          )}
+        </Box>
+      </TokenCategorySection>
+
+      {/* Colours */}
+      <TokenCategorySection title="Colours" empty={!hasColour}>
+        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+          {(
+            [
+              ['background', 'Background', co.background],
+              ['color', 'Text', co.color],
+              ['borderColor', 'Border', co.borderColor],
+            ] as [string, string, string][]
+          )
+            .filter(([, , v]) => !!v)
+            .map(([key, label, value]) => (
+              <Box key={key} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box
+                  sx={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: 1,
+                    bgcolor: value,
+                    border: '1px solid rgba(0,0,0,0.15)',
+                    flexShrink: 0,
+                  }}
+                />
+                <Box>
+                  <Typography variant="caption" sx={{ display: 'block', fontWeight: 600, lineHeight: 1.2 }}>
+                    {label}
+                  </Typography>
+                  <Typography variant="caption" sx={{ fontFamily: 'monospace', fontSize: 11 }}>
+                    {value}
+                  </Typography>
                 </Box>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </TableContainer>
+              </Box>
+            ))}
+        </Box>
+      </TokenCategorySection>
+
+      {/* Shadows */}
+      <TokenCategorySection title="Shadows" empty={!hasShadow}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Box
+            sx={{
+              width: 60,
+              height: 40,
+              borderRadius: 1,
+              bgcolor: 'background.paper',
+              border: '1px solid',
+              borderColor: 'divider',
+              boxShadow: sh.boxShadow,
+            }}
+          />
+          <Typography variant="caption" sx={{ fontFamily: 'monospace', fontSize: 11 }}>
+            {sh.boxShadow}
+          </Typography>
+        </Box>
+      </TokenCategorySection>
+
+      {/* Custom */}
+      <TokenCategorySection title="Custom Properties" empty={!hasCustom}>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+          {Object.entries(custom)
+            .filter(([, v]) => !!v)
+            .map(([k, v]) => (
+              <Chip
+                key={k}
+                size="small"
+                variant="outlined"
+                label={`${k}: ${v}`}
+                sx={{ fontFamily: 'monospace', fontSize: 11 }}
+              />
+            ))}
+        </Box>
+      </TokenCategorySection>
+    </Box>
   );
 }
 
@@ -299,11 +489,25 @@ export default function ComponentPage() {
             <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>
               Preview
             </Typography>
-            {selectedVariant ? (
-              <LivePreview
-                variant={selectedVariant}
-                styleTokens={component.styleTokens}
-              />
+            {component.variants.length > 0 ? (
+              <Box>
+                <Tabs
+                  value={Math.max(0, component.variants.findIndex((v) => v.id === selectedVariantId))}
+                  onChange={(_, idx) => handleSelectVariant(component.variants[idx]?.id ?? null)}
+                  variant="scrollable"
+                  scrollButtons="auto"
+                  sx={{ borderBottom: 1, borderColor: 'divider', mb: 2, minHeight: 36 }}
+                >
+                  {component.variants.map((v) => (
+                    <Tab
+                      key={v.id}
+                      label={v.name}
+                      sx={{ textTransform: 'none', fontSize: 13, minHeight: 36, py: 0.5 }}
+                    />
+                  ))}
+                </Tabs>
+                {selectedVariant && <LivePreview variant={selectedVariant} />}
+              </Box>
             ) : (
               <Paper
                 variant="outlined"
@@ -319,7 +523,7 @@ export default function ComponentPage() {
                 }}
               >
                 <Typography variant="body2" color="text.secondary">
-                  Select or add a variant to see a preview
+                  Add a variant below to see a preview
                 </Typography>
               </Paper>
             )}
@@ -374,6 +578,13 @@ export default function ComponentPage() {
   // ═══════════════════════════════════════════════════════════
   // VIEW MODE (FR7)
   // ═══════════════════════════════════════════════════════════
+
+  const activeVariant = selectedVariant ?? component.variants[0] ?? null;
+  const activeTabIndex = Math.max(
+    0,
+    component.variants.findIndex((v) => v.id === (activeVariant?.id ?? '')),
+  );
+
   return (
     <Box>
       {/* Header */}
@@ -386,52 +597,66 @@ export default function ComponentPage() {
         </Typography>
       )}
 
-      {/* Variant selector */}
-      <VariantManager
-        componentId={component.id}
-        variants={component.variants}
-        selectedVariantId={selectedVariantId}
-        onSelectVariant={handleSelectVariant}
-        isEdit={false}
-      />
+      {/* Style Tokens */}
+      <Paper variant="outlined" sx={{ p: 3, mb: 3, borderRadius: 2 }}>
+        <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1.5 }}>
+          Style Tokens
+        </Typography>
+        <TokenDisplayCategorized tokens={component.styleTokens} />
+      </Paper>
 
-      {/* Variant details */}
-      {component.variants.length > 0 && (
-        <Box sx={{ mt: 3 }}>
-          {/* Shared token table — shown once for the component */}
-          <Paper variant="outlined" sx={{ p: 3, mb: 3, borderRadius: 2 }}>
-            <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
-              Style Tokens
-            </Typography>
-            <TokenDisplayTable tokens={component.styleTokens} />
-          </Paper>
+      {/* Tabbed Variants (MUI-docs style) */}
+      {component.variants.length > 0 ? (
+        <Paper variant="outlined" sx={{ borderRadius: 2, overflow: 'hidden' }}>
+          {/* Variant tabs */}
+          <Tabs
+            value={activeTabIndex}
+            onChange={(_, idx) => handleSelectVariant(component.variants[idx]?.id ?? null)}
+            variant="scrollable"
+            scrollButtons="auto"
+            sx={{
+              bgcolor: 'grey.50',
+              borderBottom: 1,
+              borderColor: 'divider',
+              minHeight: 42,
+              '& .MuiTab-root': { textTransform: 'none', fontSize: 14, fontWeight: 600, minHeight: 42 },
+            }}
+          >
+            {component.variants.map((v) => (
+              <Tab
+                key={v.id}
+                label={
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    {v.name}
+                    <Chip
+                      label={v.type.toUpperCase()}
+                      size="small"
+                      variant="outlined"
+                      sx={{ fontSize: 10, height: 18, pointerEvents: 'none' }}
+                    />
+                  </Box>
+                }
+              />
+            ))}
+          </Tabs>
 
-          {(selectedVariant ? [selectedVariant] : component.variants).map((v) => (
-            <Paper
-              key={v.id}
-              variant="outlined"
-              sx={{ p: 3, mb: 3, borderRadius: 2 }}
-            >
-              <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 2 }}>
-                {v.name}
-                <Chip
-                  label={v.type.toUpperCase()}
-                  size="small"
-                  variant="outlined"
-                  sx={{ ml: 1, fontSize: 11 }}
-                />
-              </Typography>
-
+          {/* Active variant panel */}
+          {activeVariant && (
+            <Box sx={{ p: 3 }}>
               {/* Live Preview */}
               <Box sx={{ mb: 2 }}>
-                <LivePreview variant={v} styleTokens={component.styleTokens} />
+                <LivePreview variant={activeVariant} />
               </Box>
 
               {/* Code Viewer */}
-              <CodeViewer source={v.source} />
-            </Paper>
-          ))}
-        </Box>
+              <CodeViewer source={activeVariant.source} />
+            </Box>
+          )}
+        </Paper>
+      ) : (
+        <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic', mt: 2 }}>
+          No variants defined for this component.
+        </Typography>
       )}
     </Box>
   );

@@ -3,11 +3,9 @@
 
 import { useState, useMemo } from 'react';
 import { Box, Slider, Typography } from '@mui/material';
-import type { StyleTokens } from '../../types';
 
 interface SvgResizerProps {
   svgString: string;
-  styleTokens: StyleTokens;
 }
 
 /** Parse viewBox or width/height from SVG to get aspect ratio */
@@ -28,34 +26,12 @@ function parseSvgDimensions(svg: string): { width: number; height: number } {
   return { width: w || 200, height: h || 200 };
 }
 
-export default function SvgResizer({ svgString, styleTokens }: SvgResizerProps) {
+export default function SvgResizer({ svgString }: SvgResizerProps) {
   const dims = useMemo(() => parseSvgDimensions(svgString), [svgString]);
   const aspectRatio = dims.width / dims.height;
   const [width, setWidth] = useState(Math.min(dims.width, 400));
 
   const currentHeight = Math.round(width / aspectRatio);
-
-  // Build inline style from tokens
-  const tokenStyle: React.CSSProperties = {};
-  const { boxModel, typography, colours, shadows, custom } = styleTokens;
-  if (colours.background) tokenStyle.backgroundColor = colours.background;
-  if (colours.color) tokenStyle.color = colours.color;
-  if (colours.borderColor) {
-    tokenStyle.borderColor = colours.borderColor;
-    tokenStyle.borderStyle = 'solid';
-    tokenStyle.borderWidth = '1px';
-  }
-  if (shadows.boxShadow && shadows.boxShadow !== 'none')
-    tokenStyle.boxShadow = shadows.boxShadow;
-  if (boxModel.borderRadius) tokenStyle.borderRadius = boxModel.borderRadius;
-  if (boxModel.paddingTop) tokenStyle.paddingTop = boxModel.paddingTop;
-  if (boxModel.paddingRight) tokenStyle.paddingRight = boxModel.paddingRight;
-  if (boxModel.paddingBottom) tokenStyle.paddingBottom = boxModel.paddingBottom;
-  if (boxModel.paddingLeft) tokenStyle.paddingLeft = boxModel.paddingLeft;
-  if (typography.fontFamily) tokenStyle.fontFamily = typography.fontFamily;
-  Object.entries(custom).forEach(([k, v]) => {
-    if (v) (tokenStyle as Record<string, string>)[k] = v;
-  });
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -64,7 +40,6 @@ export default function SvgResizer({ svgString, styleTokens }: SvgResizerProps) 
         sx={{
           width,
           height: currentHeight,
-          ...tokenStyle,
           overflow: 'hidden',
           display: 'flex',
           alignItems: 'center',

@@ -148,6 +148,11 @@ function SortableTreeItem({
             bgcolor: 'primary.main',
             color: '#fff',
             '& .MuiListItemIcon-root': { color: '#fff' },
+            '& .MuiIconButton-root': { color: 'rgba(255,255,255,0.85)' },
+            '& .MuiIconButton-root:hover': { color: '#fff', bgcolor: 'rgba(255,255,255,0.15)' },
+            '& [role="button"]': { color: 'rgba(255,255,255,0.6)' },
+            '& .MuiInput-root::before': { borderColor: 'rgba(255,255,255,0.5)' },
+            '& .MuiInput-input': { color: '#fff' },
             '&:hover': { bgcolor: 'primary.dark' },
           },
         }}
@@ -250,7 +255,7 @@ function SortableTreeItem({
               display: 'flex',
               gap: 0,
               ml: 0.5,
-              opacity: 0,
+              opacity: isSelected ? 0.85 : 0,
               transition: 'opacity 0.15s',
               '.MuiListItemButton-root:hover &, .MuiListItemButton-root:focus-within &': { opacity: 1 },
             }}

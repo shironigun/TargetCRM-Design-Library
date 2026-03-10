@@ -319,30 +319,71 @@ export default function StyleTokenEditor({
               ] as [keyof ColourTokens, string][]
             ).map(([key, label]) => (
               <Grid size={{ xs: 12, sm: 4 }} key={key}>
-                <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-end' }}>
-                  <input
-                    type="color"
-                    value={tokens.colours[key] || '#000000'}
-                    onChange={(e) => updateColours(key, e.target.value)}
-                    style={{
-                      width: 40,
-                      height: 40,
-                      border: '1px solid',
-                      borderColor: 'inherit',
-                      borderRadius: 4,
-                      cursor: 'pointer',
-                      padding: 0,
-                      background: 'none',
-                    }}
-                  />
-                  <TextField
-                    label={label}
-                    size="small"
-                    fullWidth
-                    value={tokens.colours[key]}
-                    onChange={(e) => updateColours(key, e.target.value)}
-                    placeholder="#000000 or rgba(...)"
-                  />
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                  <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-end' }}>
+                    {tokens.colours[key] ? (
+                      <input
+                        type="color"
+                        value={tokens.colours[key] || '#000000'}
+                        onChange={(e) => updateColours(key, e.target.value)}
+                        style={{
+                          width: 40,
+                          height: 40,
+                          border: '1px solid',
+                          borderColor: 'inherit',
+                          borderRadius: 4,
+                          cursor: 'pointer',
+                          padding: 0,
+                          background: 'none',
+                        }}
+                      />
+                    ) : (
+                      <Box
+                        sx={{
+                          width: 40,
+                          height: 40,
+                          borderRadius: '4px',
+                          border: '1px dashed',
+                          borderColor: 'divider',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0,
+                          backgroundImage: 'linear-gradient(45deg, #eee 25%, transparent 25%, transparent 75%, #eee 75%), linear-gradient(45deg, #eee 25%, transparent 25%, transparent 75%, #eee 75%)',
+                          backgroundSize: '8px 8px',
+                          backgroundPosition: '0 0, 4px 4px',
+                        }}
+                        onClick={() => updateColours(key, '#000000')}
+                        title="Click to set color"
+                      />
+                    )}
+                    <TextField
+                      label={label}
+                      size="small"
+                      fullWidth
+                      value={tokens.colours[key]}
+                      onChange={(e) => updateColours(key, e.target.value)}
+                      placeholder="#000000 or rgba(...)"
+                    />
+                  </Box>
+                  <Box sx={{ display: 'flex', gap: 0.5 }}>
+                    <Button
+                      size="small"
+                      variant="text"
+                      sx={{ fontSize: 11, minWidth: 0, px: 0.75, py: 0.25, textTransform: 'none' }}
+                      onClick={() => updateColours(key, '')}
+                    >
+                      Clear
+                    </Button>
+                    <Button
+                      size="small"
+                      variant="text"
+                      sx={{ fontSize: 11, minWidth: 0, px: 0.75, py: 0.25, textTransform: 'none' }}
+                      onClick={() => updateColours(key, 'transparent')}
+                    >
+                      Transparent
+                    </Button>
+                  </Box>
                 </Box>
               </Grid>
             ))}

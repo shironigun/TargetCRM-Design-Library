@@ -14,61 +14,10 @@ import * as MuiMaterial from '@mui/material';
 import * as MuiIcons from '@mui/icons-material';
 import { transform } from '@babel/standalone';
 import SvgResizer from './SvgResizer';
-import type { Variant, StyleTokens } from '../../types';
+import type { Variant } from '../../types';
 
 interface LivePreviewProps {
   variant: Variant;
-  styleTokens: StyleTokens;
-}
-
-/** Build a flat CSS style object from StyleTokens (non-empty values only) */
-function tokensToStyle(tokens: StyleTokens): React.CSSProperties {
-  const s: Record<string, string> = {};
-  const { boxModel: bm, typography: ty, colours: co, shadows: sh, custom } = tokens;
-
-  // Box model
-  if (bm.width) s.width = bm.width;
-  if (bm.height) s.height = bm.height;
-  if (bm.minWidth) s.minWidth = bm.minWidth;
-  if (bm.maxWidth) s.maxWidth = bm.maxWidth;
-  if (bm.minHeight) s.minHeight = bm.minHeight;
-  if (bm.maxHeight) s.maxHeight = bm.maxHeight;
-  if (bm.marginTop) s.marginTop = bm.marginTop;
-  if (bm.marginRight) s.marginRight = bm.marginRight;
-  if (bm.marginBottom) s.marginBottom = bm.marginBottom;
-  if (bm.marginLeft) s.marginLeft = bm.marginLeft;
-  if (bm.paddingTop) s.paddingTop = bm.paddingTop;
-  if (bm.paddingRight) s.paddingRight = bm.paddingRight;
-  if (bm.paddingBottom) s.paddingBottom = bm.paddingBottom;
-  if (bm.paddingLeft) s.paddingLeft = bm.paddingLeft;
-  if (bm.borderRadius) s.borderRadius = bm.borderRadius;
-
-  // Typography
-  if (ty.fontFamily) s.fontFamily = ty.fontFamily;
-  if (ty.fontWeight) s.fontWeight = ty.fontWeight;
-  if (ty.fontSize) s.fontSize = ty.fontSize;
-  if (ty.lineHeight) s.lineHeight = ty.lineHeight;
-  if (ty.letterSpacing) s.letterSpacing = ty.letterSpacing;
-  if (ty.textTransform) s.textTransform = ty.textTransform;
-
-  // Colours
-  if (co.background) s.backgroundColor = co.background;
-  if (co.color) s.color = co.color;
-  if (co.borderColor) {
-    s.borderColor = co.borderColor;
-    s.borderStyle = 'solid';
-    s.borderWidth = '1px';
-  }
-
-  // Shadows
-  if (sh.boxShadow && sh.boxShadow !== 'none') s.boxShadow = sh.boxShadow;
-
-  // Custom
-  Object.entries(custom).forEach(([k, v]) => {
-    if (v) s[k] = v;
-  });
-
-  return s as React.CSSProperties;
 }
 
 /** Allowed import prefixes for live evaluation */
@@ -325,13 +274,11 @@ function evaluateCode(source: string): React.ReactNode {
   return output as React.ReactNode;
 }
 
-export default function LivePreview({ variant, styleTokens }: LivePreviewProps) {
+export default function LivePreview({ variant }: LivePreviewProps) {
   // Default SVG variants to raw mode (safe — uses SvgResizer with slider)
   const [svgMode, setSvgMode] = useState<'component' | 'raw'>(
     variant.type === 'svg' ? 'raw' : 'component',
   );
-
-  const tokenStyle = useMemo(() => tokensToStyle(styleTokens), [styleTokens]);
 
   const rendered = useMemo(() => {
     try {
@@ -424,9 +371,9 @@ export default function LivePreview({ variant, styleTokens }: LivePreviewProps) 
             </Typography>
           </Alert>
         ) : rendered.isSvgRaw && variant.svgOriginal ? (
-          <SvgResizer svgString={variant.svgOriginal} styleTokens={styleTokens} />
+          <SvgResizer svgString={variant.svgOriginal} />
         ) : (
-          <div style={tokenStyle}>{rendered.element}</div>
+          <div>{rendered.element}</div>
         )}
       </Box>
     </Paper>
