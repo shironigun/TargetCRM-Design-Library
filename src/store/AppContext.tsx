@@ -19,6 +19,7 @@ import {
   type Variant,
   emptyAppState,
   defaultStyleTokens,
+  migrateComponentDef,
 } from '../types';
 
 // ─── Storage key ──────────────────────────────────────────────────────────────
@@ -263,6 +264,10 @@ function loadState(): AppState {
     if (raw) {
       const parsed = JSON.parse(raw) as AppState;
       if (parsed.sidebarItems && parsed.components) {
+        // Migrate old flat-token components to multi-group model
+        for (const id of Object.keys(parsed.components)) {
+          parsed.components[id] = migrateComponentDef(parsed.components[id]);
+        }
         return parsed;
       }
     }
@@ -318,11 +323,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         name,
         description,
         styleTokens: {
-          boxModel: { ...defaultStyleTokens.boxModel },
-          typography: { ...defaultStyleTokens.typography },
-          colours: { ...defaultStyleTokens.colours },
+          boxModels: [],
+          typographies: [],
+          colours: [],
           shadows: { ...defaultStyleTokens.shadows },
-          custom: {},
+          customs: [],
         },
         variants: [],
         createdAt: new Date().toISOString(),

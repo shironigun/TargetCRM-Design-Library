@@ -4,7 +4,7 @@
 // SVG variants: SVGR-converted React component or raw SVG with resizer
 
 import { useMemo, useState } from 'react';
-import { Box, Paper, Alert, ToggleButtonGroup, ToggleButton, Typography } from '@mui/material';
+import { Box, Paper, Alert, ToggleButtonGroup, ToggleButton, Typography, Slider, Tooltip } from '@mui/material';
 import {
   Code as CodeIcon,
   Image as ImageIcon,
@@ -271,7 +271,62 @@ function evaluateCode(source: string): React.ReactNode {
         'Switch to raw SVG render mode for safe display.',
     );
   }
-  return output as React.ReactNode;
+  // Post-process: fix any string `style` props → object style maps.
+  // User JSX may contain style="color:red" which Babel preserves as a string.
+  return fixStyleProps(output as React.ReactNode);
+}
+
+/**
+ * Parse a CSS string like "color: red; margin: 10px" into a React style obj.
+ */
+function parseCssString(css: string): Record<string, string> {
+  const result: Record<string, string> = {};
+  css.split(';').forEach((decl) => {
+    const idx = decl.indexOf(':');
+    if (idx < 0) return;
+    const prop = decl.slice(0, idx).trim();
+    const value = decl.slice(idx + 1).trim();
+    if (!prop || !value) return;
+    // Convert kebab-case to camelCase (e.g. "font-size" → "fontSize")
+    const jsProp = prop.replace(/-([a-z])/g, (_, c: string) => c.toUpperCase());
+    result[jsProp] = value;
+  });
+  return result;
+}
+
+/**
+ * Recursively clone a React element tree, converting any string `style`
+ * props into object style maps so React 19 doesn't throw.
+ */
+function fixStyleProps(node: React.ReactNode): React.ReactNode {
+  if (node == null || typeof node !== 'object') return node;
+  if (Array.isArray(node)) return node.map(fixStyleProps);
+  if (!React.isValidElement(node)) return node;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const props = node.props as Record<string, any>;
+  let changed = false;
+  const newProps: Record<string, unknown> = {};
+
+  // Fix string style → object
+  if (typeof props.style === 'string') {
+    newProps.style = parseCssString(props.style);
+    changed = true;
+  }
+
+  // Recurse into children
+  if (props.children != null) {
+    const fixed = Array.isArray(props.children)
+      ? props.children.map(fixStyleProps)
+      : fixStyleProps(props.children);
+    if (fixed !== props.children) {
+      newProps.children = fixed;
+      changed = true;
+    }
+  }
+
+  if (!changed) return node;
+  return React.cloneElement(node, { ...props, ...newProps });
 }
 
 export default function LivePreview({ variant }: LivePreviewProps) {
@@ -279,6 +334,9 @@ export default function LivePreview({ variant }: LivePreviewProps) {
   const [svgMode, setSvgMode] = useState<'component' | 'raw'>(
     variant.type === 'svg' ? 'raw' : 'component',
   );
+
+  /** Zoom percentage — 100 = no zoom */
+  const [zoom, setZoom] = useState<number>(100);
 
   const rendered = useMemo(() => {
     try {
@@ -303,79 +361,163 @@ export default function LivePreview({ variant }: LivePreviewProps) {
     }
   }, [variant, svgMode]);
 
-  return (
-    <Paper
-      variant="outlined"
-      sx={{
-        borderRadius: 2,
-        overflow: 'hidden',
-      }}
-    >
-      {/* SVG mode toggle — always visible for SVG variants */}
-      {variant.type === 'svg' && variant.svgOriginal && (
-        <Box
-          sx={{
-            px: 2,
-            py: 1.5,
-            borderBottom: '1px solid',
-            borderColor: 'divider',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1.5,
-            bgcolor: 'grey.50',
-          }}
-        >
-          <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>
-            Render mode:
-          </Typography>
-          <ToggleButtonGroup
-            value={svgMode}
-            exclusive
-            onChange={(_, val) => val && setSvgMode(val)}
-            size="small"
-          >
-            <ToggleButton value="raw" sx={{ px: 2 }}>
-              <ImageIcon sx={{ fontSize: 16, mr: 0.5 }} />
-              Raw SVG
-            </ToggleButton>
-            <ToggleButton value="component" sx={{ px: 2 }}>
-              <CodeIcon sx={{ fontSize: 16, mr: 0.5 }} />
-              React Component
-            </ToggleButton>
-          </ToggleButtonGroup>
-        </Box>
-      )}
+  const zoomMarks = [
+    { value: 25, label: '25%' },
+    { value: 50, label: '50%' },
+    { value: 100, label: '100%' },
+    { value: 200, label: '200%' },
+    { value: 300, label: '300%' },
+  ];
 
-      {/* Preview area with checkerboard background */}
-      <Box
+  return (
+    <Box sx={{ display: 'flex', gap: 1 }}>
+      {/* Main preview panel */}
+      <Paper
+        variant="outlined"
         sx={{
-          p: 3,
-          minHeight: 120,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: 'grey.50',
-          backgroundImage:
-            'linear-gradient(45deg, rgba(0,0,0,0.04) 25%, transparent 25%), linear-gradient(-45deg, rgba(0,0,0,0.04) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, rgba(0,0,0,0.04) 75%), linear-gradient(-45deg, transparent 75%, rgba(0,0,0,0.04) 75%)',
-          backgroundSize: '20px 20px',
-          backgroundPosition: '0 0, 0 10px, 10px -10px, -10px 0px',
+          borderRadius: 2,
+          overflow: 'hidden',
+          flex: 1,
+          minWidth: 0,
         }}
       >
-        {rendered.error ? (
-          <Alert severity="error" sx={{ width: '100%' }}>
-            <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-              Preview Error
+        {/* SVG mode toggle — always visible for SVG variants */}
+        {variant.type === 'svg' && variant.svgOriginal && (
+          <Box
+            sx={{
+              px: 2,
+              py: 1.5,
+              borderBottom: '1px solid',
+              borderColor: 'divider',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1.5,
+              bgcolor: 'grey.50',
+            }}
+          >
+            <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>
+              Render mode:
             </Typography>
-            <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: 12, mt: 0.5 }}>
-              {rendered.error}
-            </Typography>
-          </Alert>
-        ) : rendered.isSvgRaw && variant.svgOriginal ? (
-          <SvgResizer svgString={variant.svgOriginal} />
-        ) : (
-          <div>{rendered.element}</div>
+            <ToggleButtonGroup
+              value={svgMode}
+              exclusive
+              onChange={(_, val) => val && setSvgMode(val)}
+              size="small"
+            >
+              <ToggleButton value="raw" sx={{ px: 2 }}>
+                <ImageIcon sx={{ fontSize: 16, mr: 0.5 }} />
+                Raw SVG
+              </ToggleButton>
+              <ToggleButton value="component" sx={{ px: 2 }}>
+                <CodeIcon sx={{ fontSize: 16, mr: 0.5 }} />
+                React Component
+              </ToggleButton>
+            </ToggleButtonGroup>
+          </Box>
         )}
+
+        {/* Preview area with checkerboard background */}
+        <Box
+          sx={{
+            p: 3,
+            minHeight: 120,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            overflow: 'auto',
+            backgroundColor: 'grey.50',
+            backgroundImage:
+              'linear-gradient(45deg, rgba(0,0,0,0.04) 25%, transparent 25%), linear-gradient(-45deg, rgba(0,0,0,0.04) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, rgba(0,0,0,0.04) 75%), linear-gradient(-45deg, transparent 75%, rgba(0,0,0,0.04) 75%)',
+            backgroundSize: '20px 20px',
+            backgroundPosition: '0 0, 0 10px, 10px -10px, -10px 0px',
+          }}
+        >
+          {rendered.error ? (
+            <Alert severity="error" sx={{ width: '100%' }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                Preview Error
+              </Typography>
+              <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: 12, mt: 0.5 }}>
+                {rendered.error}
+              </Typography>
+            </Alert>
+          ) : (
+            <Box
+              sx={{
+                transform: `scale(${zoom / 100})`,
+                transformOrigin: 'center center',
+                transition: 'transform 0.15s ease',
+              }}
+            >
+              {rendered.isSvgRaw && variant.svgOriginal ? (
+                <SvgResizer svgString={variant.svgOriginal} />
+              ) : (
+                <div>{rendered.element}</div>
+              )}
+            </Box>
+          )}
+        </Box>
+      </Paper>
+
+      {/* Vertical zoom slider — right side of preview */}
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          py: 2,
+          px: 0.5,
+          minWidth: 44,
+          maxWidth: 44,
+        }}
+      >
+        <Tooltip title="Reset zoom to 100%" placement="left">
+          <Typography
+            variant="caption"
+            onClick={() => setZoom(100)}
+            sx={{
+              mb: 1.5,
+              fontWeight: 700,
+              fontSize: 11,
+              color: zoom === 100 ? 'text.secondary' : 'primary.main',
+              cursor: 'pointer',
+              userSelect: 'none',
+              '&:hover': { color: 'primary.dark' },
+            }}
+          >
+            {zoom}%
+          </Typography>
+        </Tooltip>
+        <Slider
+          orientation="vertical"
+          value={zoom}
+          onChange={(_, v) => setZoom(v as number)}
+          min={25}
+          max={300}
+          step={5}
+          marks={zoomMarks}
+          valueLabelDisplay="auto"
+          valueLabelFormat={(v) => `${v}%`}
+          sx={{
+            flex: 1,
+            minHeight: 100,
+            '& .MuiSlider-markLabel': {
+              fontSize: 10,
+              left: -4,
+            },
+            '& .MuiSlider-thumb': {
+              width: 14,
+              height: 14,
+            },
+            '& .MuiSlider-track': {
+              width: 3,
+            },
+            '& .MuiSlider-rail': {
+              width: 3,
+            },
+          }}
+        />
       </Box>
-    </Paper>
+    </Box>
   );
 }

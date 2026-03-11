@@ -37,23 +37,17 @@ import { useAppMode } from '../store/ModeContext';
 import StyleTokenEditor from '../components/editor/StyleTokenEditor';
 import VariantManager from '../components/editor/VariantManager';
 import LivePreview from '../components/preview/LivePreview';
-import type { StyleTokens } from '../types';
+import type { StyleTokens, BoxModelTokens, TypographyTokens } from '../types';
+import { migrateStyleTokens } from '../types';
 
 // ─── View Mode: Box Model Diagram (Chrome DevTools style) ────────────────────
 
-function BoxModelDiagram({ tokens }: { tokens: StyleTokens }) {
-  const { boxModel: bm } = tokens;
+function SingleBoxModelDiagram({ bm, label }: { bm: BoxModelTokens; label?: string }) {
   const hasMargin = bm.marginTop || bm.marginRight || bm.marginBottom || bm.marginLeft;
   const hasPadding = bm.paddingTop || bm.paddingRight || bm.paddingBottom || bm.paddingLeft;
   const hasDims = bm.width || bm.height || bm.minWidth || bm.maxWidth || bm.minHeight || bm.maxHeight || bm.borderRadius;
 
-  if (!hasMargin && !hasPadding && !hasDims) {
-    return (
-      <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
-        No box model tokens set.
-      </Typography>
-    );
-  }
+  if (!hasMargin && !hasPadding && !hasDims) return null;
 
   const val = (v: string) => v || '\u2013';
   const cellSx = {
@@ -66,10 +60,11 @@ function BoxModelDiagram({ tokens }: { tokens: StyleTokens }) {
   };
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-      {/* Box model diagram */}
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mb: 1.5 }}>
+      {label && (
+        <Chip label={label} size="small" variant="outlined" sx={{ alignSelf: 'flex-start', fontWeight: 600, fontSize: 11 }} />
+      )}
       <Box sx={{ display: 'inline-flex', justifyContent: 'center' }}>
-        {/* Margin layer */}
         <Box
           sx={{
             border: '1px dashed',
@@ -88,7 +83,6 @@ function BoxModelDiagram({ tokens }: { tokens: StyleTokens }) {
           <Box sx={cellSx}>{val(bm.marginTop)}</Box>
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <Box sx={{ ...cellSx, px: 1 }}>{val(bm.marginLeft)}</Box>
-            {/* Padding layer */}
             <Box
               sx={{
                 border: '1px dashed',
@@ -108,7 +102,6 @@ function BoxModelDiagram({ tokens }: { tokens: StyleTokens }) {
               <Box sx={cellSx}>{val(bm.paddingTop)}</Box>
               <Box sx={{ display: 'flex', alignItems: 'center' }}>
                 <Box sx={{ ...cellSx, px: 1 }}>{val(bm.paddingLeft)}</Box>
-                {/* Element core */}
                 <Box
                   sx={{
                     border: '1px solid',
@@ -141,32 +134,36 @@ function BoxModelDiagram({ tokens }: { tokens: StyleTokens }) {
           <Box sx={cellSx}>{val(bm.marginBottom)}</Box>
         </Box>
       </Box>
-
-      {/* Min/Max dimensions */}
       {(bm.minWidth || bm.maxWidth || bm.minHeight || bm.maxHeight) && (
         <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mt: 0.5 }}>
-          {bm.minWidth && (
-            <Typography variant="caption" sx={{ fontFamily: 'monospace' }}>
-              min-w: {bm.minWidth}
-            </Typography>
-          )}
-          {bm.maxWidth && (
-            <Typography variant="caption" sx={{ fontFamily: 'monospace' }}>
-              max-w: {bm.maxWidth}
-            </Typography>
-          )}
-          {bm.minHeight && (
-            <Typography variant="caption" sx={{ fontFamily: 'monospace' }}>
-              min-h: {bm.minHeight}
-            </Typography>
-          )}
-          {bm.maxHeight && (
-            <Typography variant="caption" sx={{ fontFamily: 'monospace' }}>
-              max-h: {bm.maxHeight}
-            </Typography>
-          )}
+          {bm.minWidth && <Typography variant="caption" sx={{ fontFamily: 'monospace' }}>min-w: {bm.minWidth}</Typography>}
+          {bm.maxWidth && <Typography variant="caption" sx={{ fontFamily: 'monospace' }}>max-w: {bm.maxWidth}</Typography>}
+          {bm.minHeight && <Typography variant="caption" sx={{ fontFamily: 'monospace' }}>min-h: {bm.minHeight}</Typography>}
+          {bm.maxHeight && <Typography variant="caption" sx={{ fontFamily: 'monospace' }}>max-h: {bm.maxHeight}</Typography>}
         </Box>
       )}
+    </Box>
+  );
+}
+
+// ─── View Mode: Single Typography Group Display ──────────────────────────────
+
+function SingleTypographyDisplay({ ty, label }: { ty: TypographyTokens; label?: string }) {
+  const hasData = Object.values(ty).some(Boolean);
+  if (!hasData) return null;
+  return (
+    <Box sx={{ mb: 1 }}>
+      {label && (
+        <Chip label={label} size="small" variant="outlined" sx={{ mb: 0.5, fontWeight: 600, fontSize: 11 }} />
+      )}
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+        {ty.fontFamily && <Chip size="small" variant="outlined" label={`family: ${ty.fontFamily}`} sx={{ fontFamily: 'monospace', fontSize: 11 }} />}
+        {ty.fontWeight && <Chip size="small" variant="outlined" label={`weight: ${ty.fontWeight}`} sx={{ fontFamily: 'monospace', fontSize: 11 }} />}
+        {ty.fontSize && <Chip size="small" variant="outlined" label={`size: ${ty.fontSize}`} sx={{ fontFamily: 'monospace', fontSize: 11 }} />}
+        {ty.lineHeight && <Chip size="small" variant="outlined" label={`line-height: ${ty.lineHeight}`} sx={{ fontFamily: 'monospace', fontSize: 11 }} />}
+        {ty.letterSpacing && <Chip size="small" variant="outlined" label={`letter-spacing: ${ty.letterSpacing}`} sx={{ fontFamily: 'monospace', fontSize: 11 }} />}
+        {ty.textTransform && <Chip size="small" variant="outlined" label={`transform: ${ty.textTransform}`} sx={{ fontFamily: 'monospace', fontSize: 11 }} />}
+      </Box>
     </Box>
   );
 }
@@ -185,14 +182,15 @@ function TokenCategorySection({ title, children, empty }: { title: string; child
   );
 }
 
-function TokenDisplayCategorized({ tokens }: { tokens: StyleTokens }) {
-  const { boxModel: bm, typography: ty, colours: co, shadows: sh, custom } = tokens;
+function TokenDisplayCategorized({ tokens: rawTokens }: { tokens: StyleTokens }) {
+  const tokens = migrateStyleTokens(rawTokens);
+  const { boxModels, typographies, colours, shadows: sh, customs } = tokens;
 
-  const hasBox = Object.values(bm).some(Boolean);
-  const hasTypo = Object.values(ty).some(Boolean);
-  const hasColour = Object.values(co).some(Boolean);
+  const hasBox = boxModels.length > 0;
+  const hasTypo = typographies.length > 0;
+  const hasColour = colours.length > 0;
   const hasShadow = sh.boxShadow && sh.boxShadow !== 'none';
-  const hasCustom = Object.entries(custom).some(([, v]) => !!v);
+  const hasCustom = customs.some((g) => Object.values(g.tokens).some(Boolean));
 
   if (!hasBox && !hasTypo && !hasColour && !hasShadow && !hasCustom) {
     return (
@@ -204,64 +202,43 @@ function TokenDisplayCategorized({ tokens }: { tokens: StyleTokens }) {
 
   return (
     <Box>
-      {/* Box Model — visual diagram */}
+      {/* Box Models — one diagram per group */}
       <TokenCategorySection title="Box Model" empty={!hasBox}>
-        <BoxModelDiagram tokens={tokens} />
+        {boxModels.map((g) => (
+          <SingleBoxModelDiagram key={g.id} bm={g.tokens} label={boxModels.length > 1 ? g.label : undefined} />
+        ))}
       </TokenCategorySection>
 
-      {/* Typography */}
+      {/* Typographies — one section per group */}
       <TokenCategorySection title="Typography" empty={!hasTypo}>
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-          {ty.fontFamily && (
-            <Chip size="small" variant="outlined" label={`family: ${ty.fontFamily}`} sx={{ fontFamily: 'monospace', fontSize: 11 }} />
-          )}
-          {ty.fontWeight && (
-            <Chip size="small" variant="outlined" label={`weight: ${ty.fontWeight}`} sx={{ fontFamily: 'monospace', fontSize: 11 }} />
-          )}
-          {ty.fontSize && (
-            <Chip size="small" variant="outlined" label={`size: ${ty.fontSize}`} sx={{ fontFamily: 'monospace', fontSize: 11 }} />
-          )}
-          {ty.lineHeight && (
-            <Chip size="small" variant="outlined" label={`line-height: ${ty.lineHeight}`} sx={{ fontFamily: 'monospace', fontSize: 11 }} />
-          )}
-          {ty.letterSpacing && (
-            <Chip size="small" variant="outlined" label={`letter-spacing: ${ty.letterSpacing}`} sx={{ fontFamily: 'monospace', fontSize: 11 }} />
-          )}
-          {ty.textTransform && (
-            <Chip size="small" variant="outlined" label={`transform: ${ty.textTransform}`} sx={{ fontFamily: 'monospace', fontSize: 11 }} />
-          )}
-        </Box>
+        {typographies.map((g) => (
+          <SingleTypographyDisplay key={g.id} ty={g.tokens} label={typographies.length > 1 ? g.label : undefined} />
+        ))}
       </TokenCategorySection>
 
-      {/* Colours */}
+      {/* Colours — unlimited labelled entries */}
       <TokenCategorySection title="Colours" empty={!hasColour}>
         <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-          {(
-            [
-              ['background', 'Background', co.background],
-              ['color', 'Text', co.color],
-              ['borderColor', 'Border', co.borderColor],
-            ] as [string, string, string][]
-          )
-            .filter(([, , v]) => !!v)
-            .map(([key, label, value]) => (
-              <Box key={key} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          {colours
+            .filter((c) => !!c.value)
+            .map((c) => (
+              <Box key={c.id} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <Box
                   sx={{
                     width: 28,
                     height: 28,
                     borderRadius: 1,
-                    bgcolor: value,
+                    bgcolor: c.value,
                     border: '1px solid rgba(0,0,0,0.15)',
                     flexShrink: 0,
                   }}
                 />
                 <Box>
                   <Typography variant="caption" sx={{ display: 'block', fontWeight: 600, lineHeight: 1.2 }}>
-                    {label}
+                    {c.label}
                   </Typography>
                   <Typography variant="caption" sx={{ fontFamily: 'monospace', fontSize: 11 }}>
-                    {value}
+                    {c.value}
                   </Typography>
                 </Box>
               </Box>
@@ -289,21 +266,30 @@ function TokenDisplayCategorized({ tokens }: { tokens: StyleTokens }) {
         </Box>
       </TokenCategorySection>
 
-      {/* Custom */}
+      {/* Custom — one section per group */}
       <TokenCategorySection title="Custom Properties" empty={!hasCustom}>
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-          {Object.entries(custom)
-            .filter(([, v]) => !!v)
-            .map(([k, v]) => (
-              <Chip
-                key={k}
-                size="small"
-                variant="outlined"
-                label={`${k}: ${v}`}
-                sx={{ fontFamily: 'monospace', fontSize: 11 }}
-              />
-            ))}
-        </Box>
+        {customs.map((g) => {
+          const entries = Object.entries(g.tokens).filter(([, v]) => !!v);
+          if (entries.length === 0) return null;
+          return (
+            <Box key={g.id} sx={{ mb: 1 }}>
+              {customs.length > 1 && (
+                <Chip label={g.label} size="small" variant="outlined" sx={{ mb: 0.5, fontWeight: 600, fontSize: 11 }} />
+              )}
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                {entries.map(([k, v]) => (
+                  <Chip
+                    key={k}
+                    size="small"
+                    variant="outlined"
+                    label={`${k}: ${v}`}
+                    sx={{ fontFamily: 'monospace', fontSize: 11 }}
+                  />
+                ))}
+              </Box>
+            </Box>
+          );
+        })}
       </TokenCategorySection>
     </Box>
   );
@@ -420,7 +406,7 @@ export default function ComponentPage() {
   // ═══════════════════════════════════════════════════════════
   if (isEdit) {
     return (
-      <Box>
+      <Box key={componentId}>
         {/* Name & Description */}
         <Box sx={{ mb: 3 }}>
           <TextField
@@ -586,7 +572,7 @@ export default function ComponentPage() {
   );
 
   return (
-    <Box>
+    <Box key={componentId}>
       {/* Header */}
       <Typography variant="h4" sx={{ fontWeight: 800, mb: 1 }}>
         {component.name}
